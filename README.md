@@ -1,6 +1,9 @@
 # SmogChamber
 Intership Project
 
+## Docummentation
+- [Description du projet](https://duckduckgo.com)
+- [Notes](notes.md)
 ## Branch GG (restricted)
 Content:
 - webcam_dacq.py: image acquisition from a web camera
