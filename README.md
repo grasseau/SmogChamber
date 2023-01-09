@@ -1,7 +1,7 @@
 # SmogChamber
 Intership Project
 
-## Docummentation
+## Documentation
 - [Description du projet](https://duckduckgo.com)
 - [Notes](notes.md)
 ## Branch GG (restricted)
