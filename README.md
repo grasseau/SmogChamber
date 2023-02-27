@@ -7,7 +7,7 @@
 - webcam_dacq.py: image acquisition from a web camera
 - sPhone_dacq.py: image acquisition from a smartphone
 - processing.py: basic image processing
-- : simulation of the trace length distribution
+- traceSimulation.py: trace simulation and trace length distribution
 
 # Other files
 - Data inputs: data acquisitions are image files (jpeg). There are 
