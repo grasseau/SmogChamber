@@ -25,7 +25,7 @@ my_logger=logging.getLogger()
 my_logger.info("Simulations of alpha tracks in the cloud chamber")
 
 # Track number to be simulated in the full volume 
-trackNumber = 1000000
+trackNumber = 5000000
 # Track number counter
 trackNumberCounter =0 
 # Track seen in the cloud chamber fully include in the fiducial volume
@@ -151,27 +151,34 @@ cos_theta]
 
 # Response function of the cloud Chamber
 # Exponential with a gaussian end point and a gaussian function
-def exponentialEndpoint(X, Agauss, mu, relativeSigma, relativeGaus2Exp, L0) :
-    Aexp = Agauss * relativeGaus2Exp
+def exponentialEndpoint(X, Aexp, L0, Agauss, mu, relativeSigma ) :
     sigma = mu * relativeSigma
     functionValue1 = (Aexp * np.exp(-X/L0))
     functionValue2 = [1 if x<mu else np.exp(-1.0 * (x-mu)**2 / (2.*sigma**2)) for x in X]
     return (functionValue1*functionValue2)
 
-def gaussian(X, Agauss, mu, relativeSigma, relativeGaus2Exp, L0) :
+def gaussian(X, Aexp, L0, Agauss, mu, relativeSigma) :
     sigma = mu * relativeSigma
     functionValue3 = Agauss * np.exp( -(X-mu)**2 / (2.*sigma**2) )
     return (functionValue3)
 
-def responseFunction(X, Agauss, mu, relativeSigma, relativeGaus2Exp, L0) :
-    functionValue1 = exponentialEndpoint(X, Agauss, mu, relativeSigma, relativeGaus2Exp, L0)
-    functionValue2 = gaussian(X, Agauss, mu, relativeSigma, relativeGaus2Exp, L0)
+def responseFunction(X, Aexp, L0, Agauss, mu, relativeSigma) :
+    functionValue1 = exponentialEndpoint(X, Aexp, L0, Agauss, mu, relativeSigma)
+    functionValue2 = gaussian(X, Aexp, L0, Agauss, mu, relativeSigma)
     return (functionValue1 + functionValue2)
 
-def twoEnergiesResponseFunction(X, A1gauss, A2gauss, mu1, mu2, relativeSigma, relativeGauss2Exp, L0 ) : 
-    functionValue1 = responseFunction(X, A1gauss, mu1, relativeSigma, relativeGauss2Exp, L0) 
-    functionValue2 = responseFunction(X, A2gauss, mu2, relativeSigma, relativeGauss2Exp, L0) 
+def twoEnergiesResponseFunction(X, A1exp, L01, A1gauss, mu1, A2exp, L02, A2gauss, mu2, relativeSigma) : 
+    functionValue1 = responseFunction(X, A1exp, L01, A1gauss, mu1, relativeSigma) 
+    functionValue2 = responseFunction(X, A2exp, L02, A2gauss, mu2, relativeSigma) 
     return (functionValue1+functionValue2)
+
+def threeEnergiesResponseFunction(X, A1exp, L01, A1gauss, mu1, A2exp, L02, A2gauss, mu2, A3exp, L03, A3gauss, mu3, relativeSigma) : 
+    functionValue1 = responseFunction(X, A1exp, L01, A1gauss, mu1, relativeSigma) 
+    functionValue2 = responseFunction(X, A2exp, L02, A2gauss, mu2, relativeSigma) 
+    functionValue3 = responseFunction(X, A3exp, L03, A3gauss, mu3, relativeSigma) 
+    return (functionValue1+functionValue2+functionValue3)
+
+
 #Algorithme
 def main() :
     # From https://www.nndc.bnl.gov/ensdf/ :
@@ -183,7 +190,7 @@ def main() :
     alphaEnergy218Po = 6.00255  # MeV
     alphaEnergy214Po = 7.68682  # MeV
     
-    alphaLength = [rangeNIST(alphaEnergy222Rn),   rangeNIST(alphaEnergy218Po),rangeNIST(alphaEnergy214Po)]
+    alphaLength = [rangeNIST(alphaEnergy222Rn),  rangeNIST(alphaEnergy218Po), rangeNIST(alphaEnergy214Po)]
     my_logger.info("Alpha path length 222Rn is %4.2f" %(alphaLength[0]))
     my_logger.info("Alpha path length 218Po is %4.2f" %(alphaLength[1]))
     my_logger.info("Alpha path length 214Po is %4.2f" %(alphaLength[2]))
@@ -208,7 +215,7 @@ def main() :
         my_logger.debug("Alpha direction is %4.4f, %4.4f, %4.4f" %(u[0], u[1], u[2]))
     
         # Choice of the radionuclide and Smearing of the alpha Length
-        choiceRadionuclide = np.random.randint(0,1)
+        choiceRadionuclide = np.random.randint(0,3)
         if (choiceRadionuclide == 2) :
             choiceRadionuclide = np.random.randint(0,3)
         alphaLengthEByE = alphaLength[choiceRadionuclide] * np.random.normal(1.0, alphaRelativeStragglingRange)     
@@ -271,84 +278,124 @@ def main() :
     my_logger.info("Track number seen OUT is %6d " %(trackNumberSeenOut))
 
     fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(15, 10))
+
+    # Main Plot with the length track distribution
     ax[0].set_yscale('log')
     ax[0].set_ylim(1., 3000)
-    ax[0].set_xlim(0.,70.)
+    ax[0].set_xlim(0.,100.)
     ax[0].set_xlabel(r"$\rm{Track \; length \; l (mm)}$")
     ax[0].set_ylabel(r"$\rm{dN/dl \; (mm)}$")
     #Fixing bin width
     binWidth =0.5
     lengthValues=np.arange(min(lengthDistribution), max(lengthDistribution) + binWidth, binWidth)
+    # bin center calculation
+    lengthValuesCenter = np.array([0.5 * (lengthValues[i] + lengthValues[i+1]) for i in range(len(lengthValues)-1)])
+
     histoValues, lengthValues, patches =  ax[0].hist(lengthDistribution[(lengthDistribution>0) & (lengthDistribution<100)], bins=lengthValues, log=True )
 
-    # bin center calculation
-    lengthValues2 = np.array([0.5 * (lengthValues[i] + lengthValues[i+1]) for i in range(len(lengthValues)-1)])
     # Removing negative values for error calculation
     histoValues[histoValues<0.] = 0.
     histoErrors = np.sqrt(histoValues)
     histoErrors[histoErrors==0] = 1.
-    ax[0].errorbar(lengthValues2, histoValues, yerr=histoErrors, fmt='o')
+    ax[0].errorbar(lengthValuesCenter, histoValues, yerr=histoErrors, fmt='o')
+
     # Fitting Interval
     Lmin = 15.
-    Lmax = 50.
+    Lmax = 99.
     jIni = np.intc(Lmin/binWidth+1)
     jFinal= np.intc(Lmax/binWidth)
-    lengthValuesInterval  = lengthValues2[jIni:jFinal]
+    lengthValuesInterval  = lengthValuesCenter[jIni:jFinal]
     histoValuesInterval = histoValues[jIni:jFinal]
     histoErrors = histoErrors[jIni:jFinal]
     my_logger.info("Fitting between %4.2f and %4.2f mm" %(lengthValuesInterval[0],lengthValuesInterval[len(lengthValuesInterval)-1]))
-    # Fitting the curve
-    p1 = [200., 41.7, 0.037, 10., 10.]
-    bounds1 = ([100., 30., 0.020, 5., 8.],[500., 90., 0.080, 25., 10.])
-    popt, pcov = curve_fit(f=responseFunction, xdata=lengthValuesInterval, ydata=histoValuesInterval, p0=p1, sigma=histoErrors, bounds=bounds1)    
-    print(popt)
-   
-
-
-    ax[0].plot(lengthValuesInterval, responseFunction(lengthValuesInterval, *popt), color='blue', linewidth=2.5, label=r'Fitted function')
-    ax[0].plot(lengthValuesInterval, exponentialEndpoint(lengthValuesInterval, *popt), color='red', linewidth=2.5, label=r'Fitted function')
-    ax[0].plot(lengthValuesInterval, gaussian(lengthValuesInterval, *popt), color='orange', linewidth=2.5, label=r'Fitted function')
-    gaussianValues = gaussian(lengthValuesInterval, *popt)
-    gaussianIntegral = sum(gaussianValues) 
-    my_logger.info("Histo In integral %6d " %(len(lengthDistributionIn[(lengthDistributionIn>0) & (lengthDistributionIn<57)]))) 
-    my_logger.info("Gaussian integral %6d " %(gaussianIntegral)) 
-
-    # Fitting to tow energies ongoing
-    #p2 = [200., 200., 42., 75., 0.037, 10., 10.]
-    #bounds2 = ([100., 100., 30., 30., 0.020, 0., 8.],[500., 500., 90., 90., 0.080, 25., 10.])
-    #popt, pcov = curve_fit(f=twoEnergiesResponseFunction, xdata=lengthValuesInterval, ydata=histoValuesInterval, p0=p2, sigma=histoErrors, bounds=bounds2)    
-    #print(popt)
-
+    
+    # alpha tracks with one extreme out of the active volume
     ax[1].set_yscale('log')
     ax[1].set_ylim(1., 3000)
-    ax[1].set_xlim(0.,70.)
+    ax[1].set_xlim(0.,100.)
     ax[1].set_xlabel(r"$\rm{Track \; length \; Out \; l (mm)}$")
     ax[1].set_ylabel(r"$\rm{dN/dl \; (mm)}$")
-    histoValues, lengthValues, patches =  ax[1].hist(lengthDistributionOut[(lengthDistributionOut>0) & (lengthDistributionOut<100)], bins=lengthValues, log=True )
-    histoValues[histoValues<0.] = 0.
-    histoErrors = np.sqrt(histoValues)
-    histoErrors[histoErrors==0] = 1.
-    ax[1].errorbar(lengthValues2, histoValues, yerr=histoErrors, fmt='o')
-    ax[1].plot(lengthValuesInterval, exponentialEndpoint(lengthValuesInterval, *popt), color='red', linewidth=2.5, label=r'Fitted function')
+    histoValuesOut, lengthValuesOut, patches =  ax[1].hist(lengthDistributionOut[(lengthDistributionOut>0) & (lengthDistributionOut<100)], bins=lengthValues, log=True )
+    histoValuesOut[histoValuesOut<0.] = 0.
+    histoErrorsOut = np.sqrt(histoValuesOut)
+    histoErrorsOut[histoErrorsOut==0] = 1.
+    ax[1].errorbar(lengthValuesCenter, histoValuesOut, yerr=histoErrorsOut, fmt='o')
 
+    # alpha tracks with both extremes in the active volume
     ax[2].set_yscale('log')
     ax[2].set_ylim(1., 3000)
-    ax[2].set_xlim(0.,70.)
+    ax[2].set_xlim(0.,100.)
     ax[2].set_xlabel(r"$\rm{Track \; length \; In \; l (mm)}$")
     ax[2].set_ylabel(r"$\rm{dN/dl \; (mm)}$")
-    histoValues, lengthValues, patches =  ax[2].hist(lengthDistributionIn[(lengthDistributionIn>0) & (lengthDistributionIn<100)], bins=lengthValues, log=True )
-    histoValues[histoValues<0.] = 0.
-    histoErrors = np.sqrt(histoValues)
-    histoErrors[histoErrors==0] = 1.
-    ax[2].errorbar(lengthValues2, histoValues, yerr=histoErrors, fmt='o')
-    ax[2].plot(lengthValuesInterval, gaussian(lengthValuesInterval, *popt), color='blue', linewidth=2.5, label=r'Fitted function')
+    histoValuesIn, lengthValuesIn, patches =  ax[2].hist(lengthDistributionIn[(lengthDistributionIn>0) & (lengthDistributionIn<100)], bins=lengthValues, log=True )
+    histoValuesIn[histoValuesIn<0.] = 0.
+    histoErrorsIn = np.sqrt(histoValuesIn)
+    histoErrorsIn[histoErrorsIn==0] = 1.
+    ax[2].errorbar(lengthValuesCenter, histoValuesIn, yerr=histoErrorsIn, fmt='o')
 
-    my_logger.info("Total number of tracks simulated in the cloud chamber %6d " %(trackNumber))
-    my_logger.info("Total volume of the cloud chambers %8.5f m3" %(fullVolumeHeight*fullVolumeWidth**2/1000./1000./1000.) )
-    my_logger.info("Total number of tracks in the in peak %6d" %(gaussianIntegral))
-    my_logger.info("Factor to get the Bq/m3 from the decay rate in the active volume of the chamber after fitting the peak %8.2f " %(trackNumber/(fullVolumeHeight*fullVolumeWidth**2/1000./1000./1000.)/gaussianIntegral)) 
-    my_logger.info("If the decay rate in the peak in the active volume of the chamber is 1/60 Hz, then the Bq/m3 should be %8.2f Bq/m3" %(trackNumber/60./(fullVolumeHeight*fullVolumeWidth**2/1000./1000./1000.)/gaussianIntegral))
+    fittingOption = 2    
+    if (fittingOption==0) :
+        # Fitting the curve tow one energy
+        p1 = [1000.,10., 200., 41.7, 0.037]
+        bounds1 = ([100., 8., 100., 30., 0.020],[10000., 10., 500., 90., 0.080])
+        popt, pcov = curve_fit(f=responseFunction, xdata=lengthValuesInterval, ydata=histoValuesInterval, p0=p1, sigma=histoErrors, bounds=bounds1)    
+        print(popt)
 
+        ax[0].plot(lengthValuesInterval, responseFunction(lengthValuesInterval, *popt), color='blue', linewidth=2.5, label=r'Fitted function')
+        ax[0].plot(lengthValuesInterval, exponentialEndpoint(lengthValuesInterval, *popt), color='red', linewidth=2.5, label=r'Fitted function')
+        ax[0].plot(lengthValuesInterval, gaussian(lengthValuesInterval, *popt), color='orange', linewidth=2.5, label=r'Fitted function')
+        gaussianValues = gaussian(lengthValuesInterval, *popt)
+        gaussianIntegral = sum(gaussianValues) 
+        my_logger.info("Histo In integral %6d " %(len(lengthDistributionIn[(lengthDistributionIn>0) & (lengthDistributionIn<57)]))) 
+        my_logger.info("Gaussian integral %6d " %(gaussianIntegral)) 
+
+        ax[1].plot(lengthValuesInterval, exponentialEndpoint(lengthValuesInterval, *popt), color='red', linewidth=2.5, label=r'Fitted function')
+        ax[2].plot(lengthValuesInterval, gaussian(lengthValuesInterval, *popt), color='blue', linewidth=2.5, label=r'Fitted function')
+
+        my_logger.info("Total number of tracks simulated in the cloud chamber %6d " %(trackNumber))
+        my_logger.info("Total volume of the cloud chambers %8.5f m3" %(fullVolumeHeight*fullVolumeWidth**2/1000./1000./1000.) )
+        my_logger.info("Total number of tracks in the in peak %6d" %(gaussianIntegral))
+        my_logger.info("Factor to get the Bq/m3 from the decay rate in the active volume of the chamber after fitting the peak %8.2f " %(trackNumber/(fullVolumeHeight*fullVolumeWidth**2/1000./1000./1000.)/gaussianIntegral)) 
+        my_logger.info("If the decay rate in the peak in the active volume of the chamber is 1/60 Hz, then the Bq/m3 should be %8.2f Bq/m3" %(trackNumber/60./(fullVolumeHeight*fullVolumeWidth**2/1000./1000./1000.)/gaussianIntegral))
+
+    if (fittingOption==1) :
+        # Fitting to two energies 
+        p2 = [1000., 10., 200., 42., 1000., 10., 200., 75., 0.037]
+        bounds2 = ([100., 5., 10., 30., 100., 5., 10., 30., 0.015],[10000., 15., 1000., 90., 10000., 15., 1000., 90., 0.050])
+        popt, pcov = curve_fit(f=twoEnergiesResponseFunction, xdata=lengthValuesInterval, ydata=histoValuesInterval, p0=p2, sigma=histoErrors, bounds=bounds2)    
+        print(popt)
+        popt_rp = [popt[0], popt[1], popt[2], popt[3], popt[8]]
+        ax[0].plot(lengthValuesInterval, responseFunction(lengthValuesInterval, *popt_rp), color='orange', linewidth=2.5, label=r'Fitted function')
+        popt_rp = [popt[4], popt[5], popt[6], popt[7], popt[8]]
+        ax[0].plot(lengthValuesInterval, responseFunction(lengthValuesInterval, *popt_rp), color='red', linewidth=2.5, label=r'Fitted function')
+        ax[0].plot(lengthValuesInterval, twoEnergiesResponseFunction(lengthValuesInterval, *popt), color='blue', linewidth=2.5, label=r'Fitted function')
+       
+    if (fittingOption==2) :
+        p3 = [1000., 10., 200., 42., 700., 10., 200., 47., 100., 10., 200., 75., 0.037]
+        bounds3 = ([100., 5., 10., 30., 100., 5., 10., 30., 100., 5., 10., 30., 0.015],[10000., 15., 1000., 90., 10000., 15., 1000., 90., 10000., 15., 1000., 90., 0.050])
+        popt, pcov = curve_fit(f=threeEnergiesResponseFunction, xdata=lengthValuesInterval, ydata=histoValuesInterval, p0=p3, sigma=histoErrors, bounds=bounds3)    
+        print(popt)
+        popt_rp = [popt[0], popt[1], popt[2], popt[3], popt[12]]
+        ax[0].plot(lengthValuesInterval, responseFunction(lengthValuesInterval, *popt_rp), color='orange', linewidth=2.5, label=r'Fitted function')
+        popt_rp = [popt[4], popt[5], popt[6], popt[7], popt[12]]
+        ax[0].plot(lengthValuesInterval, responseFunction(lengthValuesInterval, *popt_rp), color='red', linewidth=2.5, label=r'Fitted function')
+        popt_rp = [popt[8], popt[9], popt[10], popt[11], popt[12]]
+        ax[0].plot(lengthValuesInterval, responseFunction(lengthValuesInterval, *popt_rp), color='pink', linewidth=2.5, label=r'Fitted function')
+        
+        ax[0].plot(lengthValuesInterval, threeEnergiesResponseFunction(lengthValuesInterval, *popt), color='blue', linewidth=2.5, label=r'Fitted function')
+       
+
+        #responseFunction(X, Agauss, mu, relativeSigma, relativeGaus2Exp, L0) :
+        #popt_responsefunction = [popt[0], popt[2]]
+        #ax[0].plot(lengthValuesInterval, responseFunction(lengthValuesInterval, *popt), color='blue', linewidth=2.5, label=r'Fitted function')
+
+    
+    #ax[1].plot(lengthValuesInterval, exponentialEndpoint(lengthValuesInterval, *popt), color='red', linewidth=2.5, label=r'Fitted function')
+
+   
+    #ax[2].plot(lengthValuesInterval, gaussian(lengthValuesInterval, *popt), color='blue', linewidth=2.5, label=r'Fitted function')
+
+    
     plt.show()
 
 if __name__ == "__main__" :
