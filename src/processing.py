@@ -16,7 +16,6 @@ def checkContinue():
   return goOn
 
 
-
 class IO:
   def __init__( self, dataDir="JPEG", fileTemplate= "img_{}.jpeg"):
     self.dir = dataDir
