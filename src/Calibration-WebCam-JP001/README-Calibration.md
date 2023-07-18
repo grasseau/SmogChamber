@@ -41,6 +41,5 @@ Top picture (pixel 970,60) the calibration is 56+-2 pixels for 20 mm vertically
 
 At 70 cm
 Horizontal view 115+-3 cm, so horizontal angular view 2 x arctan (57.5./70.) = 78.8 degrees 
-Vertical view 50+-2 cm, so horizontal angular view 2 x arctan(25./70.) = 39.3 degrees
+Vertical view 55+-2 cm, so horizontal angular view 2 x arctan(27.5/70.) = 42.9 degrees
 
-612 160 mm
