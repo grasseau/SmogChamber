@@ -1,8 +1,8 @@
 import cv2
 import time
 
-# Time delay (in second) between to image acquisition
-TimeDelay = 0.5
+storeImage = False
+waitTime = 0.2  # Sleep in sec.
 
 # camera = cv2.VideoCapture(0)
 camera = cv2.VideoCapture(2)
@@ -23,12 +23,16 @@ while(nextImage):
   eAcquisition = time.perf_counter()
 
   # Processing & Show image
-  gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  
-  # cv2.imshow('Capturing Video',frame)
-  cv2.imshow('Capturing Video',gray)
-  time.sleep(TimeDelay)
-  eProcessing = time.perf_counter_ns()
+  res = cv2.resize(frame, dsize=(500,500), interpolation=cv2.INTER_CUBIC)
+  cv2.namedWindow("Resized", cv2.WINDOW_NORMAL)
+  cv2.imshow("Resized", res)
 
+  # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  
+  # cv2.imshow('Capturing Video',frame)
+  # cv2.imshow('Capturing Video',gray)
+  time.sleep(waitTime)
+  eProcessing = time.perf_counter()
+  
   # Store
   if storeImage: 
     cv2.imwrite(fileName, gray)
