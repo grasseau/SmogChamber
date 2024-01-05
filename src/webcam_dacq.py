@@ -1,6 +1,8 @@
 import cv2
 import time
 
+# Time delay (in second) between to image acquisition
+TimeDelay = 0.5
 
 camera = cv2.VideoCapture(0)
 camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
@@ -23,7 +25,7 @@ while(nextImage):
   gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  
   # cv2.imshow('Capturing Video',frame)
   cv2.imshow('Capturing Video',gray)
-  time.sleep(0.5)
+  time.sleep(TimeDelay)
   eProcessing = time.perf_counter_ns()
   
   # Store
