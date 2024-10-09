@@ -25,7 +25,7 @@ my_logger=logging.getLogger()
 my_logger.info("Simulations of alpha tracks in the cloud chamber")
 
 # Track number to be simulated in the full volume 
-trackNumber = 5000000
+trackNumber = 1000000
 # Track number counter
 trackNumberCounter =0 
 # Track seen in the cloud chamber fully include in the fiducial volume
@@ -34,27 +34,27 @@ trackNumberSeenIn = 0
 trackNumberSeenOut = 0
 
 # Minimal length to consider the alpha track
-alphaProjectionThreshold=10
+alphaProjectionThreshold=10.
 
 # Considered volume fullVolumeWidth**2 x fullVolumeHeight
-# We consider a horizontal area of 0.25x0.25 m^2 = 1/8 m^2
+# We consider a horizontal area of 0.25x0.25 m^2 = 1/16 m^2
 # which correspond with the area covered by the picture
 # Tracks which partially go out of this area are rejected
 # there the fullVolumeWidth**2 can be considered as the fiducial area
-fullVolumeWidth = 250 # in mm
+fullVolumeWidth = 250. # in mm
 # the height considered is 100 mm which correspond with the height of the 
 # cloud chamber. In addition the projected path length of an alpha particle
 # of 10 MeV in dry air is 10 cm, therefore we assume that alpha path length are below 
 # 10 cm, which is a conservative assumption.
-fullVolumeHeight = 100 # in mm
+fullVolumeHeight = 200. # in mm
 
 # It is not clear what is the thickness of the active volume. 
 # The estimation given in appendix C is 2-3 mm
 # A additional question could be the uniformity of the active volume 
 # in the horizontal plane We assume perfect uniformity of the active volume 
 # thickness
-activeVolumeHeight = 4 # in mm, see page 4 of appendix C
-activeVolumeHeightDispersion = 0.25 # in relative units ad hoc input
+activeVolumeHeight = 70. # in mm, see page 4 of appendix C
+activeVolumeHeightDispersion = 0.00001 # in relative units ad hoc input
 
 # Parameter of the Bethe-Bloch formula in W. R. Leo page 24
 # One has to pay attention that this formula is valid for
@@ -64,7 +64,7 @@ activeVolumeHeightDispersion = 0.25 # in relative units ad hoc input
 betheBlochNormalisation = 0.1535 # MeV cm^2/g 
 electronMass = 511000 # eV/c^2
 alphaCharge = 2 # electron charge units
-alphaRelativeStragglingRange = 0.037 # See SRIM Calculation form Vincent METIVIER in Git repository
+alphaRelativeStragglingRange = 0.037 #0.037 # See SRIM Calculation form Vincent METIVIER in Git repository
 alphaMass = 3727 # MeV/c^2
 airZoverA = 0.5
 airDensity  = 0.00120479 # g/cm^3, see Geant4 Material Database
@@ -136,7 +136,7 @@ def rangeNIST(alphaEnergy) :
 # Alpha emission point are assumed to be uniformly random in the
 # considered volume 
 def alphaEmmission() :
-    vertex = [random.uniform(-fullVolumeWidth/2., fullVolumeWidth/2.), random.uniform(-fullVolumeWidth/2., fullVolumeWidth/2.), random.uniform(0, fullVolumeHeight)]
+    vertex = [random.uniform(-fullVolumeWidth/2., fullVolumeWidth/2.), random.uniform(-fullVolumeWidth/2., fullVolumeWidth/2.), random.uniform(0., fullVolumeHeight)]
     return vertex
 
 # Alpha direction (u, v, w) is also defined as a list
@@ -144,9 +144,7 @@ def alphaEmmission() :
 def alphaDirection() :
     phi = random.uniform(0, 2 * math.pi)
     cos_theta = random.uniform(-1., 1.)
-    u = [math.cos(phi) * math.sqrt(1-cos_theta*cos_theta),
-math.sin(phi) * math.sqrt(1-cos_theta*cos_theta),
-cos_theta]
+    u = [math.cos(phi) * math.sqrt(1-cos_theta*cos_theta), math.sin(phi) * math.sqrt(1-cos_theta*cos_theta), cos_theta]
     return u
 
 # Response function of the cloud Chamber
@@ -199,7 +197,8 @@ def main() :
     trackNumberSeen=0
     trackNumberSeenIn=0
     trackNumberSeenOut=0
-    
+    trackNumberVertexIn=0
+    trackNumberBothVertexIn=0
 
     # test for histogramming
     lengthDistribution = np.zeros(trackNumber,dtype=float)
@@ -210,36 +209,45 @@ def main() :
         trackNumberCounter=trackNumberCounter+1 
         vertex = alphaEmmission()
         my_logger.debug("Alpha emmission is %4.2f,%4.2f,%4.2f" %(vertex[0],vertex[1],vertex[2]))
-    
+
+        if (vertex[2]>0. and vertex[2]<activeVolumeHeight) :
+            trackNumberVertexIn = trackNumberVertexIn + 1
+
         u = alphaDirection()
         my_logger.debug("Alpha direction is %4.4f, %4.4f, %4.4f" %(u[0], u[1], u[2]))
     
         # Choice of the radionuclide and Smearing of the alpha Length
-        choiceRadionuclide = np.random.randint(0,3)
+        choiceRadionuclide = 0
+        #np.random.randint(0,3)
         if (choiceRadionuclide == 2) :
-            choiceRadionuclide = np.random.randint(0,3)
+            choiceRadionuclide = np.random.randint(0,2)
         alphaLengthEByE = alphaLength[choiceRadionuclide] * np.random.normal(1.0, alphaRelativeStragglingRange)     
 
         # straight line \vec{v}(t) = \vec{vertex} + t \vec{u}
-        alphaProjection = 0 
-        activeVolumeHeightEByE = activeVolumeHeight * np.random.normal(1.0, activeVolumeHeightDispersion) 
+        alphaProjection = 0. 
+        activeVolumeHeightEByE = activeVolumeHeight #* np.random.normal(1.0, activeVolumeHeightDispersion) 
         if (u[2]==0.) :  # protection for track direction in the xy plane
-            if (vertex[2]>0 and vertex[2]<activeVolumeHeightEByE) :
-                t1=0
+            if (vertex[2]>0. and vertex[2]<activeVolumeHeightEByE) :
+                t1=0.
                 t2 = alphaLengthEByE
             else :
-                t1 = -9999
-                t2 = -9999
+                t1 = -9999.
+                t2 = -9999.
         else :
             t2 = (activeVolumeHeightEByE-vertex[2])/u[2] # upper activeVolume
             t1 = -vertex[2]/u[2] #lower activeVolume
+  
+        if (vertex[2]>0. and vertex[2]<activeVolumeHeight) :
+            if ( ( (vertex[2] + alphaLengthEByE*u[2]) >0.) and ((vertex[2] + alphaLengthEByE*u[2]) <activeVolumeHeight)  ) : 
+                trackNumberBothVertexIn = trackNumberBothVertexIn + 1 
+
         
         my_logger.debug("Initial t values is %4.4f, %4.4f " %(t1, t2))
     
-        if (t1<0) :
-            t1=0
-        if (t2<0) :
-            t2=0
+        if (t1<0.) :
+            t1=0.
+        if (t2<0.) :
+            t2=0.
         if (t2>alphaLengthEByE) :
             t2 = alphaLengthEByE
         if (t1>alphaLengthEByE) : 
@@ -252,17 +260,21 @@ def main() :
         x2 = vertex[0] + t2*u[0]
         y2 = vertex[1] + t2*u[1]
         alphaProjection = math.sqrt( (x2-x1)**2 + (y2-y1)**2)
-        if (alphaProjection<0) :
+        if (alphaProjection<0.) :
             my_logger.info("Alpha emission is %4.2f,%4.2f,%4.2f" %(vertex[0],vertex[1],vertex[2]))
             my_logger.info("Alpha direction is %4.4f, %4.4f, %4.4f" %(u[0], u[1], u[2]))
             my_logger.info("Alpha projection length is %4.4f" %(alphaProjection))
             my_logger.info("t1 and t2 are %4.4f %4.4f" %(t1,t2))
-        
-        if ( (alphaProjection>alphaProjectionThreshold) and (x1>-fullVolumeWidth/2. and x1<fullVolumeWidth/2.) and (x2>-fullVolumeWidth/2. and x2<fullVolumeWidth/2.) and (y1>-fullVolumeWidth/2. and y1<fullVolumeWidth/2.) and (y2>-fullVolumeWidth/2. and y2<fullVolumeWidth/2.)    ) :
+
+        # Gravity center of the track
+        x_center = vertex[0] + (t1+t2)/2.*u[0]
+        y_center = vertex[1] + (t1+t2)/2.*u[1]
+        # Calculer average t as the center of the alphatrack to selection on a fiducial volume with respect to the center, as it is done with real data
+        if ( (alphaProjection>alphaProjectionThreshold) and (x_center>-fullVolumeWidth/2. and x_center<fullVolumeWidth/2.) and (y_center>-fullVolumeWidth/2. and y_center<fullVolumeWidth/2.) ) : 
             # Track seen
             trackNumberSeen+=1
             lengthDistribution[trackNumberSeen]=alphaProjection
-            if ((t1 == 0 and t2 == alphaLengthEByE) or (t2 == 0 and t1 == alphaLengthEByE) ) :
+            if ((t1 == 0. and t2 == alphaLengthEByE) or (t2 == 0. and t1 == alphaLengthEByE) ) :
                 # Track seen is fully in the active volume
                 trackNumberSeenIn=trackNumberSeenIn+1
                 lengthDistributionIn[trackNumberSeenIn]=alphaProjection
@@ -276,13 +288,15 @@ def main() :
     my_logger.info("Track number seen is %6d " %(trackNumberSeen))
     my_logger.info("Track number seen IN is %6d " %(trackNumberSeenIn))
     my_logger.info("Track number seen OUT is %6d " %(trackNumberSeenOut))
+    my_logger.info("Track number Vertex IN is %6d " %(trackNumberVertexIn))
+    my_logger.info("Track number Both Vertex IN is %6d " %(trackNumberBothVertexIn))
 
     fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(15, 10))
 
     # Main Plot with the length track distribution
     ax[0].set_yscale('log')
-    ax[0].set_ylim(1., 3000)
-    ax[0].set_xlim(0.,100.)
+    ax[0].set_ylim(1., 300000)
+    ax[0].set_xlim(0.,60.)
     ax[0].set_xlabel(r"$\rm{Track \; length \; l (mm)}$")
     ax[0].set_ylabel(r"$\rm{dN/dl \; (mm)}$")
     #Fixing bin width
@@ -311,8 +325,8 @@ def main() :
     
     # alpha tracks with one extreme out of the active volume
     ax[1].set_yscale('log')
-    ax[1].set_ylim(1., 3000)
-    ax[1].set_xlim(0.,100.)
+    ax[1].set_ylim(1., 300000)
+    ax[1].set_xlim(0.,60.)
     ax[1].set_xlabel(r"$\rm{Track \; length \; Out \; l (mm)}$")
     ax[1].set_ylabel(r"$\rm{dN/dl \; (mm)}$")
     histoValuesOut, lengthValuesOut, patches =  ax[1].hist(lengthDistributionOut[(lengthDistributionOut>0) & (lengthDistributionOut<100)], bins=lengthValues, log=True )
@@ -323,8 +337,8 @@ def main() :
 
     # alpha tracks with both extremes in the active volume
     ax[2].set_yscale('log')
-    ax[2].set_ylim(1., 3000)
-    ax[2].set_xlim(0.,100.)
+    ax[2].set_ylim(1., 300000)
+    ax[2].set_xlim(0.,60.)
     ax[2].set_xlabel(r"$\rm{Track \; length \; In \; l (mm)}$")
     ax[2].set_ylabel(r"$\rm{dN/dl \; (mm)}$")
     histoValuesIn, lengthValuesIn, patches =  ax[2].hist(lengthDistributionIn[(lengthDistributionIn>0) & (lengthDistributionIn<100)], bins=lengthValues, log=True )
@@ -333,11 +347,11 @@ def main() :
     histoErrorsIn[histoErrorsIn==0] = 1.
     ax[2].errorbar(lengthValuesCenter, histoValuesIn, yerr=histoErrorsIn, fmt='o')
 
-    fittingOption = 2    
+    fittingOption = 3    
     if (fittingOption==0) :
         # Fitting the curve tow one energy
         p1 = [1000.,10., 200., 41.7, 0.037]
-        bounds1 = ([100., 8., 100., 30., 0.020],[10000., 10., 500., 90., 0.080])
+        bounds1 = ([100., 3., 100., 20., 0.02],[10000., 20., 2000., 90., 0.60])
         popt, pcov = curve_fit(f=responseFunction, xdata=lengthValuesInterval, ydata=histoValuesInterval, p0=p1, sigma=histoErrors, bounds=bounds1)    
         print(popt)
 
@@ -346,8 +360,10 @@ def main() :
         ax[0].plot(lengthValuesInterval, gaussian(lengthValuesInterval, *popt), color='orange', linewidth=2.5, label=r'Fitted function')
         gaussianValues = gaussian(lengthValuesInterval, *popt)
         gaussianIntegral = sum(gaussianValues) 
+        rawTrackIntegral = len(lengthDistribution[(lengthDistribution>30) & (lengthDistribution<50)])
         my_logger.info("Histo In integral %6d " %(len(lengthDistributionIn[(lengthDistributionIn>0) & (lengthDistributionIn<57)]))) 
         my_logger.info("Gaussian integral %6d " %(gaussianIntegral)) 
+        my_logger.info("Total integral between 20-50 is %6d " %(rawTrackIntegral))
 
         ax[1].plot(lengthValuesInterval, exponentialEndpoint(lengthValuesInterval, *popt), color='red', linewidth=2.5, label=r'Fitted function')
         ax[2].plot(lengthValuesInterval, gaussian(lengthValuesInterval, *popt), color='blue', linewidth=2.5, label=r'Fitted function')

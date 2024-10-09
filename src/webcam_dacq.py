@@ -4,6 +4,13 @@ import time
 
 camera = cv2.VideoCapture(0)
 camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+
+
+camera.set(cv2.CAP_PROP_EXPOSURE, 1000.)
+camera.set(cv2.CAP_PROP_FPS, 4.)
+camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 540) 
+camera.set(cv2.CAP_PROP_FRAME_WIDTH, 960) 
+
 nextImage = True
 sumAcquisition=0.
 sumComputing=0.
@@ -17,7 +24,11 @@ while(nextImage):
   print("Start image ", n)
   fileName = "DACQ/img_{}.jpeg".format(n)
   ret,frame = camera.read()
+ 
   eAcquisition = time.perf_counter_ns()
+  print(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
+  print(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
+  print(camera.get(cv2.CAP_PROP_FPS))
 
   # Processing & Show image
   gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  
