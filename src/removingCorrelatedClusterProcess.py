@@ -61,6 +61,7 @@ def main() :
   meanYDistribution      = np.empty(0,dtype=float)
   angleDistribution      = np.empty(0,dtype=float)
   sizeDistribution       = np.empty(0,dtype=float)
+  goodClusterCounter = 0
 
   # Relative comparison of clusters from consecutive images
   relativeLengthDistribution = np.empty(0,dtype=float)
@@ -97,7 +98,7 @@ def main() :
                                            math.pow((cluster[3]-cluster2[3]),2) ) 
                 relativeAngle = math.fabs(cluster[4]-cluster2[4])
               
-                if (relativeDistance < maxCorrelatedRelativeDistance and relativeAngle < maxCorrelatedRelativeAngle) :
+                if (relativeDistance < maxCorrelatedRelativeDistance/calibrationFactor and relativeAngle < maxCorrelatedRelativeAngle) :
                   if (j==-1) :
                     if ( math.fabs(cluster[6]-qualitySigmaShort) < math.fabs(cluster2[6]-qualitySigmaShort) ) : 
                       removeClusterListDict[jImage].append(cluster2[1])
@@ -125,6 +126,8 @@ def main() :
         angleDistribution      = np.append(angleDistribution, cluster[4])
         sizeDistribution       = np.append(sizeDistribution, cluster[7])
         clusterListRemoved.append(cluster)
+        if (2.0*calibrationFactor*cluster[5] > 55.) :
+          my_logger.info("- Long cluster in image %d and length %f5.1 " %(iImage, 2.0*calibrationFactor*cluster[5]))
     clusterDictRemoved[iImage]=clusterListRemoved
 
   # Saving Selected cluster in dictionary using iImage as key and the list of clusters as value 
@@ -167,7 +170,7 @@ def main() :
 
   ax[0,1].set_yscale('linear')
   ax[0,1].set_ylim(.1, 500)
-  ax[0,1].set_xlim(0.,500)
+  ax[0,1].set_xlim(0.,300)
   ax[0,1].set_xlabel(r"$\rm{x (mm)}$")
   ax[0,1].set_ylabel(r"$\rm{N/dx \; (mm)}$")
   #Fixing bin width
@@ -195,37 +198,51 @@ def main() :
   angleValues=np.arange(min(angleDistribution), max(angleDistribution) + binWidth, binWidth)
   histoValues, angleValues, patches =  ax[2,0].hist(angleDistribution, bins=angleValues, log=True )
 
-  ax[2,1].set_yscale('log')
-  ax[2,1].set_ylim(.1, 5000)
-  ax[2,1].set_xlim(0.,5000.)
-  ax[2,1].set_xlabel(r"$\rm{size}$")
-  ax[2,1].set_ylabel(r"$\rm{N/dsize}$")
+  #ax[2,1].set_yscale('log')
+  #ax[2,1].set_ylim(.1, 5000)
+  #ax[2,1].set_xlim(0.,5000.)
+  #ax[2,1].set_xlabel(r"$\rm{size}$")
+  #ax[2,1].set_ylabel(r"$\rm{N/dsize}$")
   #Fixing bin width
-  binWidth =20.
-  sizeValues=np.arange(min(sizeDistribution), max(sizeDistribution) + binWidth, binWidth)
-  histoValues, sizeValues, patches =  ax[2,1].hist(sizeDistribution, bins=sizeValues, log=True )
+  #binWidth =20.
+  #sizeValues=np.arange(min(sizeDistribution), max(sizeDistribution) + binWidth, binWidth)
+  #histoValues, sizeValues, patches =  ax[2,1].hist(sizeDistribution, bins=sizeValues, log=True )
 
-  ax[0,2].set_yscale("linear")
-  ax[0,2].set_ylim(.1, 10000)
-  ax[0,2].set_xlim(0.,60.)
-  ax[0,2].set_xlabel(r"$\rm{Relative \; length \; l (pixel)}$")
-  ax[0,2].set_ylabel(r"$\rm{dN/dlr \; (pixel)}$")
+  ax[2,1].set_yscale("linear")
+  ax[2,1].set_ylim(.1, 10000)
+  ax[2,1].set_xlim(0.,500.)
+  ax[2,1].set_xlabel(r"$\rm{Relative \; length \; l (pixel)}$")
+  ax[2,1].set_ylabel(r"$\rm{dN/dlr \; (pixel)}$")
   #Fixing bin width
   binWidth =0.25
   #bin center calculation
   lengthValues=np.arange(min(relativeLengthDistribution), max(relativeLengthDistribution) + binWidth, binWidth)
   #bin center calculation
-  histoValues, lengthValues, patches =  ax[0,2].hist(relativeLengthDistribution, bins=lengthValues, log=True )
+  histoValues, lengthValues, patches =  ax[2,1].hist(relativeLengthDistribution, bins=lengthValues, log=True )
+  
+  ax[0,2].set_yscale("linear")
+  ax[0,2].set_ylim(.1, 10000)
+  ax[0,2].set_xlim(0.,500.)
+  ax[0,2].set_xlabel(r"$\rm{Relative \; length \; non correlated \; l (pixel)}$")
+  ax[0,2].set_ylabel(r"$\rm{dN/dlr \; (pixel)}$")
+  #Fixing bin width
+  binWidth =0.25
+  #bin center calculation
+  lengthValues=np.arange(min(relativeLengthDistribution2), max(relativeLengthDistribution2) + binWidth, binWidth)
+  #bin center calculation
+  histoValues, lengthValues, patches =  ax[0,2].hist(relativeLengthDistribution2, bins=lengthValues, log=True )
+  histoValues, lengthValues, patches =  ax[2,1].hist(relativeLengthDistribution2, bins=lengthValues, log=True )
+
 
   ax[1,2].set_yscale('linear')
   ax[1,2].set_ylim(.1, 10000)
   ax[1,2].set_xlim(0.,180.)
-  ax[1,2].set_xlabel(r"$\rm{Rel angle  (reladist < 15, deg)}$")
+  ax[1,2].set_xlabel(r"$\rm{Rel angle  (non correlated)}$")
   ax[1,2].set_ylabel(r"$\rm{N/dtheta}$")
   #Fixing bin width
   binWidth =0.5
-  angleValues=np.arange(min(relativeAngleDistribution2), max(relativeAngleDistribution2) + binWidth, binWidth)
-  histoValues, angleValues, patches =  ax[1,2].hist(relativeAngleDistribution2, bins=angleValues, log=True )
+  angleValues=np.arange(min(relativeAngleDistribution), max(relativeAngleDistribution) + binWidth, binWidth)
+  histoValues, angleValues, patches =  ax[1,2].hist(relativeAngleDistribution, bins=angleValues, log=True )
 
 
   ax[2,2].set_yscale('linear')
@@ -235,8 +252,9 @@ def main() :
   ax[2,2].set_ylabel(r"$\rm{N/dtheta}$")
   #Fixing bin width
   binWidth =0.5
-  angleValues=np.arange(min(relativeAngleDistribution), max(relativeAngleDistribution) + binWidth, binWidth)
-  histoValues, angleValues, patches =  ax[2,2].hist(relativeAngleDistribution, bins=angleValues, log=True )
+  angleValues=np.arange(min(relativeAngleDistribution2), max(relativeAngleDistribution2) + binWidth, binWidth)
+  histoValues, angleValues, patches =  ax[2,2].hist(relativeAngleDistribution2, bins=angleValues, log=True )
+  histoValues, angleValues, patches =  ax[1,2].hist(relativeAngleDistribution2, bins=angleValues, log=True )
 
   plt.savefig(rawDataDirectory + "removingAnalysis_ControlPlots.pdf")
   plt.show()

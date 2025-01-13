@@ -14,6 +14,9 @@ from scipy.optimize import curve_fit
 # my_logger
 from cloudChamberCommonCode import my_logger
 
+from cloudChamberCommonCode import iImageI
+from cloudChamberCommonCode import iImageF
+from cloudChamberCommonCode import imagesPerSecond
 
 # webcam calibration factor
 from cloudChamberCommonCode import calibrationFactor
@@ -61,6 +64,8 @@ def main() :
     from cloudChamberCommonCode import interestArea_y2
     
     from cloudChamberCommonCode import coronaSize
+    from cloudChamberCommonCode import minLength
+    from cloudChamberCommonCode import maxLength
     from cloudChamberCommonCode import calibrationFactor 
 
 
@@ -90,11 +95,7 @@ def main() :
     print (fiduX1, fiduX2, fiduY1, fiduY2)
     for iImage, clusterList in clusterDict.items() :
         for cluster in clusterList :
-            if (goodCluster(cluster)):
-                totalCounter = totalCounter+1
-                if (cluster[12]==0) :
-                    noMergedCounter = noMergedCounter + 1 
-            if (goodCluster(cluster) ) :
+            if (goodCluster(cluster) and  2.0*calibrationFactor*cluster[5] > minLength and 2.0*calibrationFactor*cluster[5] < maxLength) :
                 # Fiducial volume selection
                 if (cluster[2]>fiduX1 and cluster[2]<fiduX2 and cluster[3]>fiduY1 and cluster[3]<fiduY2) : 
                     lengthDistribution     = np.append(lengthDistribution, 2.0*calibrationFactor*cluster[5])
@@ -103,12 +104,28 @@ def main() :
                     meanYDistribution      = np.append(meanYDistribution, calibrationFactor*cluster[3])
                     angleDistribution      = np.append(angleDistribution, cluster[4])
                     sizeDistribution       = np.append(sizeDistribution, cluster[7])
+                    totalCounter = totalCounter+1
+                    if (cluster[12]==0) :
+                        noMergedCounter = noMergedCounter + 1 
+
     my_logger.info("Data %s" %(rawDataDirectory))
-    my_logger.info("Total number of good cluster is %5d" %(totalCounter))
-    my_logger.info("Total number of no-merged good cluster is %5d" %(noMergedCounter))
+    my_logger.info("Image range from %d until %d" %(iImageI, iImageF))
+    my_logger.info("Number of images is %d" %(iImageF-iImageI))
+    my_logger.info("Image rate is %5.2f per second" %(imagesPerSecond))
+    my_logger.info("Total number of good cluster length larger than %5.2f mm is %5d" %(minLength, totalCounter))
+    my_logger.info("with a number of no-merged good cluster of %5d" %(noMergedCounter))
     mergedRatio = float((totalCounter-noMergedCounter))/float(totalCounter)
     my_logger.info("Merged good cluster ratio is %5.2f" %(mergedRatio))
-
+    clusterRate = float(totalCounter)/float(iImageF-iImageI)*imagesPerSecond
+    clusterRateError = math.sqrt(float(totalCounter))/float(iImageF-iImageI)*imagesPerSecond
+    my_logger.info("Cluster rate is %5.4f +- %5.4f per second" %(clusterRate, clusterRateError))    
+    my_logger.info("Fiducial X interval (%5.2f, %5.2f) in mm" %(fiduX1*calibrationFactor, fiduX2*calibrationFactor))
+    my_logger.info("Fiducial Y interval (%5.2f, %5.2f) in mm" %(fiduY1*calibrationFactor, fiduY2*calibrationFactor))
+    fiducialArea = (fiduY2-fiduY1)*(fiduX2-fiduX1)*calibrationFactor*calibrationFactor/1.e6
+    my_logger.info("Fiducial area %7.5f m2" %(fiducialArea))
+    decayRateDensity = clusterRate / fiducialArea / 0.15
+    decayRateDensityError = clusterRateError / fiducialArea / 0.15
+    my_logger.info("Decay Rate %7.2f+-%7.2f per second and per m3" %(decayRateDensity, decayRateDensityError ))
     my_logger.info("Plots for cluster analysis" )    
     fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(15, 7))
 
@@ -129,10 +146,10 @@ def main() :
     histoValuesOut[histoValuesOut<0.] = 0.
     histoErrorsOut = np.sqrt(histoValuesOut)
     histoErrorsOut[histoErrorsOut==0] = 1.
-    ax[0,0].errorbar(lengthValuesCenter, histoValuesOut, yerr=histoErrorsOut, fmt='o')
+    #ax[0,0].errorbar(lengthValuesCenter, histoValuesOut, yerr=histoErrorsOut, fmt='o')
    
 
-    fittingOption = 0    
+    fittingOption = -1    
     if (fittingOption==0) :
         #Fitting the curve to one energy
         p1 = [1000.,10., 200., 41.7, 0.037]
@@ -169,7 +186,7 @@ def main() :
 
     ax[0,1].set_yscale('linear')
     ax[0,1].set_ylim(.1, 600)
-    ax[0,1].set_xlim(0.,500)
+    ax[0,1].set_xlim(0.,300)
     ax[0,1].set_xlabel(r"$\rm{x (mm)}$")
     ax[0,1].set_ylabel(r"$\rm{N/dx \; (mm)}$")
     #Fixing bin width

@@ -77,11 +77,6 @@ def main() :
       if (goodCluster(cluster) and not(cluster[1] in mergedClusterNumberList))  :
         line = (cluster[2], cluster[3], cluster[4])
         point = (cluster[2], cluster[3])
-        #if( (iImage==82) ) :
-        #        print("First Cluster")
-        #        print(cluster[0], cluster[1])
-        #        print(cluster[2], cluster[3])
-        #        print(cluster[4], cluster[5], cluster[6])
         for cluster2 in clusterList :
           if (cluster2[1] != cluster[1] and not(cluster2[1] in mergedClusterNumberList) )  :
             # Calculation of the distance from cluster2 mean to the cluster line
@@ -91,29 +86,19 @@ def main() :
             relativeDistanceSameImage = math.sqrt ( math.pow(cluster[2]-cluster2[2], 2)  +
                                            math.pow((cluster[3]-cluster2[3]),2) ) 
             relativeAngleSameImage = math.fabs(cluster[4]-cluster2[4])
+            
             relativeDistanceDistributionSameEvent  = np.append(relativeDistanceDistributionSameEvent, relativeDistanceSameImage)
-            if (relativeDistanceClusterLineSameImage < maxLinePointDistance) :
-              relativeAngleDistributionSameEvent   = np.append(relativeAngleDistributionSameEvent, relativeAngleSameImage)
-            if (relativeAngleSameImage < maxRelativeAngle) :  
-              relativeDistanceClusterLineDistributionSameImage = np.append(relativeDistanceClusterLineDistributionSameImage, relativeDistanceClusterLineSameImage)            
-            if (relativeDistanceClusterLineSameImage<maxLinePointDistance or relativeAngleSameImage < maxRelativeAngle) :
+            relativeAngleDistributionSameEvent   = np.append(relativeAngleDistributionSameEvent, relativeAngleSameImage)
+            relativeDistanceClusterLineDistributionSameImage = np.append(relativeDistanceClusterLineDistributionSameImage, relativeDistanceClusterLineSameImage)            
+            
+            if (relativeDistanceClusterLineSameImage<maxLinePointDistance/calibrationFactor and relativeAngleSameImage<maxRelativeAngle) :
               relativeDistanceDistributionSameEvent2  = np.append(relativeDistanceDistributionSameEvent2, relativeDistanceSameImage)
 
-            #if( (iImage==82) ) :
-            #    print("Second Cluster")
-            #    print(cluster2[0], cluster2[1])
-            #    print(cluster2[2], cluster2[3])
-            #    print(cluster2[4], cluster2[5], cluster2[6])
-            #    print(relativeDistanceClusterLineSameImage,relativeAngleSameImage,relativeDistanceSameImage )
-            #    print(maxLinePointDistance, maxRelativeAngle, maxRelativeDistance)
             # Merging condition
-            if (relativeDistanceClusterLineSameImage<maxLinePointDistance and relativeAngleSameImage < maxRelativeAngle and relativeDistanceSameImage <maxRelativeDistance) :    
+            if (relativeDistanceClusterLineSameImage<maxLinePointDistance/calibrationFactor and relativeAngleSameImage < maxRelativeAngle and relativeDistanceSameImage <maxRelativeDistance/calibrationFactor) :    
               cluster[13].extend(cluster2[13])
               mergingStatus = True
-              mergedClusterNumberList.append(cluster2[1])
-              
-                
-                
+              mergedClusterNumberList.append(cluster2[1])               
 
         # Not optimal since this is the same code as in filteringProcess python program
         np_cluster = np.array( cluster[13] ).T
@@ -140,12 +125,7 @@ def main() :
           extremeLowB = mean - vp[:,0]* math.sqrt(12.*ev[0])/2. 
           theta= theta
         clusterMergedList.append((iImage, cluster[1],  mean[0], mean[1], theta, sigmaLong, sigmaShort, clSize, extremeHighA, extremeHighB, extremeLowA, extremeLowB, mergingStatus, cluster))
-        if (mergingStatus and iImage==97) : 
-          print("=============")
-          print(iImage, cluster[1])
-          print(mean[0], mean[1])
-          print(theta, sigmaLong, sigmaShort)
-
+        
     clusterDictMerged[iImage]= clusterMergedList  
     #print(mergedClusterNumberList)  
     
@@ -172,6 +152,12 @@ def main() :
       cv2.imwrite(outputFileName, filtClusImg.astype(np.uint8))
       #print("tutu", outputFileName)
 
+  my_logger.info("Merging Pair cluster condition")
+  my_logger.info("--- Relative line to point distance %5.1f pixels" %(maxLinePointDistance/calibrationFactor) )  
+  my_logger.info("--- Relative angle %5.1f degres" %(maxRelativeAngle) ) 
+  my_logger.info("--- Relative cluster to cluster distance %5.1f pixels" %(maxRelativeDistance/calibrationFactor) )  
+  
+
   my_logger.info("Plots for cluster Merging" )    
   fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(10, 10))
 
@@ -197,7 +183,7 @@ def main() :
   ax[0,1].set_yscale("log")
   ax[0,1].set_ylim(.1, 1000)
   ax[0,1].set_xlim(0.,600.)
-  ax[0,1].set_xlabel(r"$\rm{Relative \; Distance  \; SE (pixel)}$")
+  ax[0,1].set_xlabel(r"$\rm{Relative \; Distance \; Cut \; SE (pixel)}$")
   ax[0,1].set_ylabel(r"$\rm{dN/dl \; (pixel)}$")
   #Fixing bin width
   binWidth =2.0
@@ -247,9 +233,128 @@ def main() :
   histoErrorsOut[histoErrorsOut==0] = 1.
   #ax[0,0].errorbar(lengthValuesCenter, histoValuesOut, yerr=histoErrorsOut, fmt='o')
   
-  plt.savefig(io.dir + "mergingFragmentedCluster_ControlPlots.pdf")
+  plt.savefig(io.dir + "mergingFragmentedCluster_ControlPlots2.pdf")
   plt.show()
  
+
+# Generating control plots
+  lengthDistribution = np.empty(0,dtype=float)
+  lengthDistribution2 = np.empty(0,dtype=float)
+  transverseDistribution = np.empty(0,dtype=float)
+  transverseDistribution2 = np.empty(0,dtype=float)
+  meanXDistribution = np.empty(0,dtype=float)
+  meanYDistribution = np.empty(0,dtype=float)
+  angleDistribution = np.empty(0,dtype=float)
+  sizeDistribution = np.empty(0,dtype=float)
+  mergedStatusCounter = 0
+  clusterCounter =0
+  for cle, valeur in clusterDictMerged.items() :
+    for cluster in valeur :
+      lengthDistribution     = np.append(lengthDistribution,calibrationFactor * 2.0 * cluster[5])
+      transverseDistribution = np.append(transverseDistribution, calibrationFactor * 2.0* cluster[6])
+      meanXDistribution      = np.append(meanXDistribution, calibrationFactor * cluster[2])
+      meanYDistribution      = np.append(meanYDistribution, calibrationFactor * cluster[3])
+      angleDistribution      = np.append(angleDistribution, cluster[4])
+      sizeDistribution       = np.append(sizeDistribution, cluster[7])
+      clusterCounter = clusterCounter+1
+      if (cluster[12]==1) :
+        mergedStatusCounter = mergedStatusCounter + 1 
+      if (cluster[12]==0) :
+        lengthDistribution2     = np.append(lengthDistribution2,calibrationFactor * 2.0 * cluster[5])
+        transverseDistribution2 = np.append(transverseDistribution2, calibrationFactor * 2.0* cluster[6])
+  my_logger.info("Merging cluster statistics" )
+  my_logger.info("--- Number of cluster %d" %(clusterCounter) )
+  my_logger.info("--- Number of merged cluster %d" %(mergedStatusCounter) )
+      
+  # Main Plot Page
+  fig, ax = plt.subplots(nrows=2, ncols=4, figsize=(15, 10))
+ 
+  ax[0,0].set_yscale("log")
+  ax[0,0].set_ylim(.1, 5000)
+  ax[0,0].set_xlim(0.,100.)
+  ax[0,0].set_xlabel(r"$\rm{Track \; length \; l (mm)}$")
+  ax[0,0].set_ylabel(r"$\rm{dN/dl \; (mm)}$")
+  #Fixing bin width
+  binWidth =1.0
+  #bin center calculation
+  lengthValues=np.arange(min(lengthDistribution), max(lengthDistribution) + binWidth, binWidth)
+  #bin center calculation
+  histoValues, lengthValues, patches =  ax[0,0].hist(lengthDistribution, bins=lengthValues, log=True )
+
+  ax[1,0].set_yscale("log")
+  ax[1,0].set_ylim(.1, 5000)
+  ax[1,0].set_xlim(0.,100.)
+  ax[1,0].set_xlabel(r"$\rm{Track \; length \; noMerged \; l (mm)}$")
+  ax[1,0].set_ylabel(r"$\rm{dN/dl \; (mm)}$")
+  #Fixing bin width
+  binWidth =1.0
+  #bin center calculation
+  lengthValues2=np.arange(min(lengthDistribution2), max(lengthDistribution2) + binWidth, binWidth)
+  #bin center calculation
+  histoValues, lengthValues2, patches =  ax[1,0].hist(lengthDistribution2, bins=lengthValues2, log=True )
+
+  ax[0,1].set_yscale('log')
+  ax[0,1].set_ylim(.1, 10000)
+  ax[0,1].set_xlim(0.,30.)
+  ax[0,1].set_xlabel(r"$\rm{Track \; transverse length \; l (mm)}$")
+  ax[0,1].set_ylabel(r"$\rm{dN/dl \; (mm)}$")
+  #Fixing bin width
+  binWidth =0.5
+  transverseValues=np.arange(min(transverseDistribution), max(transverseDistribution) + binWidth, binWidth)
+  histoValues, transverseValues, patches =  ax[0,1].hist(transverseDistribution, bins=transverseValues, log=True )
+
+  ax[1,1].set_yscale('log')
+  ax[1,1].set_ylim(.1, 10000)
+  ax[1,1].set_xlim(0.,30.)
+  ax[1,1].set_xlabel(r"$\rm{Track \; transverse length \; NoMerged \; l (mm)}$")
+  ax[1,1].set_ylabel(r"$\rm{dN/dl \; (mm)}$")
+  #Fixing bin width
+  binWidth =0.5
+  transverseValues2=np.arange(min(transverseDistribution2), max(transverseDistribution2) + binWidth, binWidth)
+  histoValues, transverseValues2, patches =  ax[1,1].hist(transverseDistribution2, bins=transverseValues2, log=True )
+
+
+  ax[0,2].set_yscale('log')
+  ax[0,2].set_ylim(.1, 5000)
+  ax[0,2].set_xlim(0.,300.)
+  ax[0,2].set_xlabel(r"$\rm{x (mm)}$")
+  ax[0,2].set_ylabel(r"$\rm{N/dx \; (mm)}$")
+  #Fixing bin width
+  binWidth =5.0
+  meanXvalues=np.arange(min(meanXDistribution), max(meanXDistribution) + binWidth, binWidth)
+  histoValues, meanXvalues, patches =  ax[0,2].hist(meanXDistribution, bins=meanXvalues, log=True )
+
+  ax[1,2].set_yscale('log')
+  ax[1,2].set_ylim(.1, 5000)
+  ax[1,2].set_xlim(0.,500.)
+  ax[1,2].set_xlabel(r"$\rm{y (mm)}$")
+  ax[1,2].set_ylabel(r"$\rm{N/dy \; (mm)}$")
+  #Fixing bin width
+  binWidth =5.0
+  meanYvalues=np.arange(min(meanYDistribution), max(meanYDistribution) + binWidth, binWidth)
+  histoValues, meanYvalues, patches =  ax[1,2].hist(meanYDistribution, bins=meanYvalues, log=True )
+
+  ax[0,3].set_yscale('log')
+  ax[0,3].set_ylim(.1, 5000)
+  ax[0,3].set_xlim(-200.,200.)
+  ax[0,3].set_xlabel(r"$\rm{angle (deg)}$")
+  ax[0,3].set_ylabel(r"$\rm{N/dtheta}$")
+  #Fixing bin width
+  binWidth =1.0
+  angleValues=np.arange(min(angleDistribution), max(angleDistribution) + binWidth, binWidth)
+  histoValues, angleValues, patches =  ax[0,3].hist(angleDistribution, bins=angleValues, log=True )
+
+  ax[1,3].set_yscale('log')
+  ax[1,3].set_ylim(.1, 5000)
+  ax[1,3].set_xlim(0.,20000.)
+  ax[1,3].set_xlabel(r"$\rm{size}$")
+  ax[1,3].set_ylabel(r"$\rm{N/dsize}$")
+  #Fixing bin width
+  binWidth =100
+  sizeValues=np.arange(min(sizeDistribution), max(sizeDistribution) + binWidth, binWidth)
+  histoValues, sizeValues, patches =  ax[1,3].hist(sizeDistribution, bins=sizeValues, log=True )
+  plt.savefig(io.dir+"mergingFragmentedCluster_ControlPlots.pdf")
+  plt.show()
 
 if __name__ == "__main__" :
   rc = main()

@@ -18,10 +18,9 @@ rawDataDirectory = "../DACQ_1807/"
 rawDataFileName = "img_C1_"  
 
 # Web camera calibration from aberration corrections and chessboard image
-# for juillet 2024
+# for July 2024
 calibrationFactor = 0.44 # mm per pixel
-
-# for DACQ 22-12024
+# for 22 January 2024
 #calibrationFactor = 1.00 # mm per pixel
 
 # 1. Chessboard processing Parameters 
@@ -31,7 +30,7 @@ fname = "noCorrection"
 nx = 19 #number of chessboard corner in x 
 ny = 19 #number of chessboard corner in y
 
-# Interest area in the chessboard processing code (not yet ready)
+# Interest area in the chessboard processing code 
 # DACQ juillet 2024
 interestArea_x1 = 650 # Parameter zone of interest in the image x1 in pixels
 interestArea_y1 = 60 # Parameter zone of interest in the image y1
@@ -42,6 +41,8 @@ interestArea_y2 = 1030 # Parameter zone of interest in the image y2
 #interestArea_y1 = 135 # Parameter zone of interest in the image y1
 #interestArea_x2 = 530 # Parameter zone of interest in the image x2 : Warning x2 and y2 are lx and ly
 #interestArea_y2 = 365 # Parameter zone of interest in the image y2
+
+# Files to be processed
 #iImageIIntegral = 0 
 #iImageFIntegral = 2460 # DACQ_220124
 iImageFIntegral = 6005 # DACQ_1807
@@ -76,37 +77,37 @@ integrationTime = 100 * deltaTimeStep # in images
 
 # 3. Raw Clustering Processing Parameters
 # cluster size threshold
-clusterSizeThreshold = 50 # Parameter : minimum size of the cluster to be analyzed
+clusterSizeThreshold = 45 # Parameter : minimum size of the cluster to be analyzed
 #clusterSizeThreshold = 25 # DACQ_220124
 
 # 4. Merging Processing Parameters
-maxLinePointDistance = 12.0 #(in pixels)
-#maxLinePointDistance = 3.0 #(in pixels) for DACQ_220124
-maxRelativeAngle = 15. #(in degrés)
-maxRelativeDistance = 100. #(in pixels)
-#maxRelativeDistance = 50. #(in pixels) for DACQ_220124
+maxLinePointDistance = 4.0 #(in mm)
+#maxLinePointDistance = 3.0 #(in mm) for DACQ_220124
+maxRelativeAngle = 25. #(in degrés)
+maxRelativeDistance = 50. #(in mm)
+#maxRelativeDistance = 50. #(in mm) for DACQ_220124
 
 
-# Good cluster parameters  (in pixels)
-goodClusterMinClusterTransverseSigma = 0.8
-goodClusterMaxClusterTransverseSigma = 6.0
+# Good cluster parameters  (in mm)
+goodClusterMinClusterTransverseSigma = 0.4
+goodClusterMaxClusterTransverseSigma = 4.0
 #goodClusterMaxClusterTransverseSigma = 3.2 # DACQ_220124
-goodClusterMinClusterLongitudinalSigma = 5.
+goodClusterMinClusterLongitudinalSigma = 2.5
 
 # Good Cluster Selection
 def goodCluster(cluster) :
   goodClusterStatus = False
-  if(cluster[6]>goodClusterMinClusterTransverseSigma and cluster[6]<goodClusterMaxClusterTransverseSigma and cluster[5]>goodClusterMinClusterLongitudinalSigma) :
+  if(cluster[6]>goodClusterMinClusterTransverseSigma/calibrationFactor and cluster[6]<goodClusterMaxClusterTransverseSigma/calibrationFactor and cluster[5]>goodClusterMinClusterLongitudinalSigma/calibrationFactor) :
     goodClusterStatus = True
   return goodClusterStatus
 
 # 5. Removing Correlated Cluster Processing Parameters
 # Maximum relative distance between two correlated clusters in two different images in pixels
-maxCorrelatedRelativeDistance = 150. 
+maxCorrelatedRelativeDistance = 75. # in mm
 #maxCorrelatedRelativeDistance = 20. # DACQ 220124
 
 # Maximum relative angle between two correlated clusters in two different images in pixels
-maxCorrelatedRelativeAngle = 20. #
+maxCorrelatedRelativeAngle = 25. #
 #maxCorrelatedRelativeAngle = 10. # DAQC_220124
 
 # Best choice of the correlated cluster between j=0 ad j=1 (not used now)
@@ -114,7 +115,10 @@ qualitySigmaShort = (goodClusterMinClusterTransverseSigma + goodClusterMaxCluste
 
 # 6. Final Analysis Distribution Process
 # corona Volume in mm
-coronaSize = 30. # 
+coronaSize = 25. # 
+# minimal length in mm
+minLength = 15.
+maxLength = 80.
 
 # Reading Image Interface Class
 class IO:

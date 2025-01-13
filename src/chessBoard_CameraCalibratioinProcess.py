@@ -25,8 +25,6 @@ from cloudChamberCommonCode import ny
 # Filtering Processing Parameters
 from cloudChamberCommonCode import timePeriod
 
-
-
 #termination criteria
 criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
